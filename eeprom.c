@@ -1,11 +1,50 @@
 #include <stdint.h>
 #include <stdbool.h>
+#include <xc.h>
 
 // === Required I2C functions (implement based on your microcontroller) ===
-extern void i2c_start(void);
-extern void i2c_stop(void);
-extern bool i2c_write_byte(uint8_t data);
-extern uint8_t i2c_read_byte(bool ack);
+
+void i2c_init(void) {
+}
+
+void i2c_wait(void) {
+    while ((SSPCON2 & 0x1F) || (SSPSTAT & 0x04)); // Wait for idle
+}
+
+void i2c_start(void) {
+    i2c_wait();
+    SEN = 1;
+}
+
+void i2c_stop(void) {
+    i2c_wait();
+    PEN = 1;
+}
+
+void i2c_restart(void) {
+    i2c_wait();
+    RSEN = 1;
+}
+
+bool i2c_write_byte(uint8_t data) {
+    i2c_wait();
+    SSPBUF = data;
+    i2c_wait();
+    return !ACKSTAT;  // 0 = ACK received
+}
+
+uint8_t i2c_read_byte(bool ack) {
+    uint8_t received;
+    i2c_wait();
+    RCEN = 1;             // Enable receive
+    i2c_wait();
+    received = SSPBUF;
+    i2c_wait();
+    ACKDT = ack ? 0 : 1;  // 0 = ACK, 1 = NACK
+    ACKEN = 1;            // Send acknowledge
+    return received;
+}
+///////////////////////////////////////////////////CONTROLLER SPECIFIC CODE ENDS/////////////////////////////////////////////////////////////
 
 // === EEPROM Configuration ===
 #define EEPROM_I2C_ADDRESS  0x50       // 24Cxx base address
